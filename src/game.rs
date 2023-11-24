@@ -168,6 +168,7 @@ impl Game {
         let target = match self.surface.get_current_texture() {
             Ok(target) => target,
             Err(wgpu::SurfaceError::Outdated) => {
+                println!("Outdated");
                 self.surface.configure(&self.device, &self.surf_config);
                 return
             }
@@ -200,7 +201,7 @@ impl Game {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         store: wgpu::StoreOp::Store,
-                        load: wgpu::LoadOp::Clear(if self.window.fullscreen().is_none() { wgpu::Color::BLACK } else { wgpu::Color::BLUE }),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -255,7 +256,7 @@ impl Game {
         if self.lmb_pressed {
             match axis {
                 0 => self.camera.rotate_right(-value * self.mouse_sensitivity),
-                1 => self.camera.rotate_up(value * self.mouse_sensitivity),
+                1 => self.camera.rotate_up(-value * self.mouse_sensitivity),
                 _ => (),
             }
         }
@@ -288,6 +289,8 @@ impl Game {
             (KeyCode::KeyS, true) => self.camera.walk_forward(-0.5),
             (KeyCode::KeyD, true) => self.camera.walk_right(-0.5),
             (KeyCode::KeyA, true) => self.camera.walk_right(0.5),
+            (KeyCode::Space, true) => self.camera.levitate_up(0.5),
+            (KeyCode::ShiftLeft, true) => self.camera.levitate_up(-0.5),
             _ => (),
         }
     }
