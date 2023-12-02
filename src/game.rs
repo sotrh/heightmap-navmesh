@@ -50,6 +50,12 @@ pub struct Game {
     last_time: Option<instant::Instant>,
     mouse_sensitivity: f32,
     lmb_pressed: bool,
+    forward: f32,
+    backward: f32,
+    left: f32,
+    right: f32,
+    up: f32,
+    down: f32,
 }
 
 impl Game {
@@ -112,7 +118,7 @@ impl Game {
 
         let camera_binder = CameraBinder::new(&device);
         let camera = Camera::look_at(
-            glam::vec3(0.0, 0.0, -4.0),
+            glam::vec3(0.0, 0.0, 4.0),
             glam::vec3(0.0, 0.0, 0.0),
             surf_config.width as _,
             surf_config.height as _,
@@ -130,7 +136,7 @@ impl Game {
             &camera_binder,
         );
 
-        let model = Model::load(&device, &queue, "res/shape-keys.glb").await?;
+        let model = Model::load(&device, &queue, "res/spherical-cube.glb").await?;
 
         Ok(Self {
             device,
@@ -147,6 +153,12 @@ impl Game {
             last_time: None,
             lmb_pressed: false,
             window,
+            forward: 0.0,
+            backward: 0.0,
+            left: 0.0,
+            right: 0.0,
+            up: 0.0,
+            down: 0.0,
         })
     }
 
@@ -184,9 +196,12 @@ impl Game {
             current_time - *last_time
         } else {
             instant::Duration::ZERO
-        };
+        }.as_secs_f32();
         self.last_time = Some(current_time);
 
+        self.camera.walk_forward((self.forward - self.backward) * dt);
+        self.camera.walk_right((self.right - self.left) * dt);
+        self.camera.levitate_up((self.up - self.down) * dt);
         self.camera_binding.update(&self.queue, &self.camera);
 
         let view = target.texture.create_view(&Default::default());
@@ -253,9 +268,10 @@ impl Game {
     }
 
     pub fn handle_axis(&mut self, axis: u32, value: f32) {
+        println!("axis = {axis}; value = {value}");
         if self.lmb_pressed {
             match axis {
-                0 => self.camera.rotate_right(-value * self.mouse_sensitivity),
+                0 => self.camera.rotate_right(value * self.mouse_sensitivity),
                 1 => self.camera.rotate_up(-value * self.mouse_sensitivity),
                 _ => (),
             }
@@ -278,19 +294,24 @@ impl Game {
             winit::event::MouseButton::Forward => (),
             winit::event::MouseButton::Other(_) => (),
         }
-        println!("lmb: {}", self.lmb_pressed);
     }
 
     pub fn handle_keyboard(&mut self, key: KeyCode, pressed: bool) {
         match (key, pressed) {
             (KeyCode::Escape, true) => self.running = false,
             (KeyCode::F11, true) => self.toggle_fullscreen(),
-            (KeyCode::KeyW, true) => self.camera.walk_forward(0.5),
-            (KeyCode::KeyS, true) => self.camera.walk_forward(-0.5),
-            (KeyCode::KeyD, true) => self.camera.walk_right(-0.5),
-            (KeyCode::KeyA, true) => self.camera.walk_right(0.5),
-            (KeyCode::Space, true) => self.camera.levitate_up(0.5),
-            (KeyCode::ShiftLeft, true) => self.camera.levitate_up(-0.5),
+            (KeyCode::KeyW, true) => self.forward = 0.5,
+            (KeyCode::KeyW, false) => self.forward = 0.0,
+            (KeyCode::KeyS, true) => self.backward = 0.5,
+            (KeyCode::KeyS, false) => self.backward = 0.0,
+            (KeyCode::KeyD, true) => self.right = 0.5,
+            (KeyCode::KeyD, false) => self.right = 0.0,
+            (KeyCode::KeyA, true) => self.left = 0.5,
+            (KeyCode::KeyA, false) => self.left = 0.0,
+            (KeyCode::Space, true) => self.up = 0.5,
+            (KeyCode::Space, false) => self.up = 0.0,
+            (KeyCode::ShiftLeft, true) => self.down = 0.5,
+            (KeyCode::ShiftLeft, false) => self.down = 0.0,
             _ => (),
         }
     }
@@ -301,12 +322,13 @@ impl Game {
 
 }
 
-fn find_or_first<T>(iter: impl Iterator<Item = T>, predicate: impl Fn(&T) -> bool) -> Option<T> {
-    let mut found = None;
+fn find_or_first<T>(mut iter: impl Iterator<Item = T>, predicate: impl Fn(&T) -> bool) -> Option<T> {
+    let mut found = iter.next();
 
     for item in iter {
-        if found.is_none() || predicate(&item) {
+        if predicate(&item) {
             found = Some(item);
+            break;
         }
     }
 

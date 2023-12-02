@@ -1,6 +1,5 @@
 mod game;
 mod resources;
-mod input;
 mod pipelines;
 
 use game::Game;

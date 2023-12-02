@@ -35,6 +35,23 @@ struct Morphs {
     d1_normal: glam::Vec3,
 }
 
+impl Morphs {
+    pub const LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+        array_stride: size_of::<Self>() as _,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![
+            0 => Float32x3,
+            1 => Float32x3,
+            2 => Float32x3,
+            4 => Float32x3,
+        ],
+    };
+}
+
+pub struct Skin {
+    
+}
+
 pub struct Model {
     vertex_buffer: wgpu::Buffer,
     morph_buffer: Option<wgpu::Buffer>,

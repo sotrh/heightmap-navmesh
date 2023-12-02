@@ -1,4 +1,4 @@
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::PI;
 
 use bytemuck::bytes_of;
 use glam::Vec3Swizzles;
@@ -98,8 +98,8 @@ impl Camera {
     pub fn look_at(eye: glam::Vec3, position: glam::Vec3, width: f32, height: f32, fovy: f32, near: f32, far: f32) -> Self {
         let forward = (position - eye).normalize();
         let right = forward.cross(glam::Vec3::Y);
-        // let up = forward.cross(right);
-        let up = glam::Vec3::Y;
+        let up = right.cross(forward);
+        // let up = glam::Vec3::Y;
         let pitch = (-forward.y).asin();
         let yaw = forward.z.atan2(forward.x);
 
@@ -158,11 +158,11 @@ impl Camera {
     }
 
     pub fn calc_view(&self) -> glam::Mat4 {
-        glam::Mat4::look_to_lh(self.eye, self.forward, self.up)
+        glam::Mat4::look_to_rh(self.eye, self.forward, self.up)
     }
 
     pub fn calc_proj(&self) -> glam::Mat4 {
-        glam::Mat4::perspective_lh(self.fovy, self.aspect, self.near, self.far)
+        glam::Mat4::perspective_rh(self.fovy, self.aspect, self.near, self.far)
     }
 
     pub fn yaw(&self) -> f32 {

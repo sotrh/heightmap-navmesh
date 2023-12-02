@@ -37,7 +37,7 @@ struct VsOut {
 fn displace_vertices(vertex: Vertex, shell: Instance) -> VsOut {
     let normal = vertex.normal;
     let num_shells = 32.0;
-    let fur_height = 0.1;
+    let fur_height = 0.05;
     let height_factor = f32(shell.id) / num_shells;
     let displaced = vertex.position + vertex.normal * height_factor * fur_height;
     let frag_position = camera.view_proj * vec4(displaced, 1.0);
@@ -49,7 +49,7 @@ fn shade_fur(in: VsOut) -> @location(0) vec4<f32> {
     // let color = in.world_normal * 0.5 + 0.5;
     // let color = vec3(in.tex_coord, 0.0);
 
-    let p = in.tex_coord * 100.0;
+    let p = in.tex_coord * 200.0;
     let grid_cell = floor(p);
     let noise = rand(grid_cell);
     if noise < in.height_factor {
@@ -59,7 +59,11 @@ fn shade_fur(in: VsOut) -> @location(0) vec4<f32> {
     let g = fract(p);
     let d = distance(vec2(0.5), g);
 
-    let color = vec3(1.0 - d);
+    if d < 0.0 {
+        discard;
+    }
+
+    let color = vec3(1.0 - d) * (in.world_normal * 0.5 + 0.5);
 
     return vec4(color * in.height_factor, 1.0);
 }
