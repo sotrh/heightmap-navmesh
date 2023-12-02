@@ -60,10 +60,15 @@ impl Fur {
         model: &'a Model,
         camera: &'a CameraBinding,
     ) {
-        pass.set_pipeline(&self.draw);
-        pass.set_bind_group(0, camera.bind_group(), &[]);
-        pass.set_index_buffer(model.index_buffer().slice(..), model.index_format());
-        pass.set_vertex_buffer(0, model.vertex_buffer().slice(..));
-        pass.draw_indexed(0..model.num_indices(), 0, 0..self.num_layers);
+        // For now just load the first mesh
+        for mesh in model.meshes() {
+            for prim in mesh.primitives() {
+                pass.set_pipeline(&self.draw);
+                pass.set_bind_group(0, camera.bind_group(), &[]);
+                pass.set_index_buffer(prim.index_buffer().slice(..), prim.index_format());
+                pass.set_vertex_buffer(0, prim.vertex_buffer().slice(..));
+                pass.draw_indexed(0..prim.num_indices(), 0, 0..self.num_layers);
+            }
+        }
     }
 }
