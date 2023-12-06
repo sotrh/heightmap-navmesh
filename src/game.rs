@@ -118,7 +118,7 @@ impl Game {
 
         let camera_binder = CameraBinder::new(&device);
         let camera = Camera::look_at(
-            glam::vec3(0.0, 2.0, 4.0),
+            glam::vec3(0.0, 1.0, 4.0),
             glam::vec3(0.0, 1.0, 0.0),
             surf_config.width as _,
             surf_config.height as _,

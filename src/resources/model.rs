@@ -77,17 +77,6 @@ impl Model {
         buffers: &[gltf::buffer::Data],
         images: &[gltf::image::Data],
     ) -> anyhow::Result<Self> {
-        // For this example we'll assume the file only has one mesh,
-        // which has one primitive.
-        let mesh = document
-            .meshes()
-            .next()
-            .with_context(|| "Model should have 1 mesh")?;
-        let prim = mesh
-            .primitives()
-            .next()
-            .with_context(|| "Mesh should have 1 primitive")?;
-
         let mut meshes = Vec::new();
         for mesh in document.meshes() {
             let mut primitives = Vec::new();
