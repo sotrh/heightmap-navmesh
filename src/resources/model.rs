@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use anyhow::{bail, Context};
+use anyhow::bail;
 use bytemuck::{cast_slice, Pod, Zeroable};
 use wgpu::util::DeviceExt;
 

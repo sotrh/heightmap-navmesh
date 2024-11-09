@@ -6,7 +6,10 @@ use winit::{
 };
 
 use crate::{
-    pipelines::fur::Fur,
+    pipelines::{
+        debug::{DebugPipeline, DebugVertex},
+        fur::Fur,
+    },
     resources::{
         camera::{Camera, CameraBinder, CameraBinding},
         model::Model,
@@ -44,6 +47,7 @@ pub struct Game {
     model: Model,
     depth_texture: Texture,
     fur: Fur,
+    debug: DebugPipeline,
     window: Window,
     camera: Camera,
     camera_binding: CameraBinding,
@@ -72,6 +76,8 @@ impl Game {
             })
             .await
             .context("No valid adapter")?;
+
+        println!("{:?}", adapter.get_info());
 
         let (device, queue) = adapter
             .request_device(
@@ -136,6 +142,8 @@ impl Game {
             &camera_binder,
         );
 
+        let debug = DebugPipeline::new(&device, surf_config.format, &camera_binder);
+
         let model = Model::load(&device, &queue, "res/walking.glb").await?;
 
         Ok(Self {
@@ -147,6 +155,7 @@ impl Game {
             mouse_sensitivity: config.mouse_sensitivity,
             depth_texture,
             fur,
+            debug,
             model,
             camera,
             camera_binding,
@@ -166,7 +175,8 @@ impl Game {
         self.surf_config.width = width;
         self.surf_config.height = height;
         self.surface.configure(&self.device, &self.surf_config);
-        self.camera.resize(self.surf_config.width, self.surf_config.height);
+        self.camera
+            .resize(self.surf_config.width, self.surf_config.height);
         self.depth_texture = Texture::depth_texture(&self.device, width, height);
     }
 
@@ -182,7 +192,7 @@ impl Game {
             Err(wgpu::SurfaceError::Outdated) => {
                 println!("Outdated");
                 self.surface.configure(&self.device, &self.surf_config);
-                return
+                return;
             }
             Err(e) => {
                 eprintln!("{}", e);
@@ -196,13 +206,45 @@ impl Game {
             current_time - *last_time
         } else {
             instant::Duration::ZERO
-        }.as_secs_f32();
+        }
+        .as_secs_f32();
         self.last_time = Some(current_time);
 
-        self.camera.walk_forward((self.forward - self.backward) * dt);
+        self.camera
+            .walk_forward((self.forward - self.backward) * dt);
         self.camera.walk_right((self.right - self.left) * dt);
         self.camera.levitate_up((self.up - self.down) * dt);
         self.camera_binding.update(&self.queue, &self.camera);
+
+        {
+            self.debug.clear();
+            self.debug
+                .batch(&self.device, &self.queue)
+                .push_vertex(DebugVertex::new(
+                    glam::vec3(0.0, 0.0, 0.0),
+                    glam::vec3(0.5, 0.0, 0.0),
+                ))
+                .push_vertex(DebugVertex::new(
+                    glam::vec3(1.0, 0.0, 0.0),
+                    glam::vec3(1.0, 0.0, 0.0),
+                ))
+                .push_vertex(DebugVertex::new(
+                    glam::vec3(0.0, 0.0, 0.0),
+                    glam::vec3(0.0, 0.5, 0.0),
+                ))
+                .push_vertex(DebugVertex::new(
+                    glam::vec3(0.0, 1.0, 0.0),
+                    glam::vec3(0.0, 1.0, 0.0),
+                ))
+                .push_vertex(DebugVertex::new(
+                    glam::vec3(0.0, 0.0, 0.0),
+                    glam::vec3(0.0, 0.0, 0.5),
+                ))
+                .push_vertex(DebugVertex::new(
+                    glam::vec3(0.0, 0.0, 1.0),
+                    glam::vec3(0.0, 0.0, 1.0),
+                ));
+        }
 
         let view = target.texture.create_view(&Default::default());
 
@@ -219,19 +261,21 @@ impl Game {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     },
                 })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: self.depth_texture.view(),
-                    depth_ops: Some(wgpu::Operations {
-                        store: wgpu::StoreOp::Store,
-                        load: wgpu::LoadOp::Clear(1.0),
-                    }),
-                    stencil_ops: None,
-                }),
+                // depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                //     view: self.depth_texture.view(),
+                //     depth_ops: Some(wgpu::Operations {
+                //         store: wgpu::StoreOp::Store,
+                //         load: wgpu::LoadOp::Clear(1.0),
+                //     }),
+                //     stencil_ops: None,
+                // }),
+                depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
 
-            self.fur.draw(&mut pass, &self.model, &self.camera_binding);
+            // self.fur.draw(&mut pass, &self.model, &self.camera_binding);
+            self.debug.draw_lines(&mut pass, &self.camera_binding);
         }
 
         self.queue.submit([encoder.finish()]);
@@ -268,7 +312,6 @@ impl Game {
     }
 
     pub fn handle_axis(&mut self, axis: u32, value: f32) {
-        println!("axis = {axis}; value = {value}");
         if self.lmb_pressed {
             match axis {
                 0 => self.camera.rotate_right(value * self.mouse_sensitivity),
@@ -319,10 +362,12 @@ impl Game {
     pub fn is_running(&self) -> bool {
         self.running
     }
-
 }
 
-fn find_or_first<T>(mut iter: impl Iterator<Item = T>, predicate: impl Fn(&T) -> bool) -> Option<T> {
+fn find_or_first<T>(
+    mut iter: impl Iterator<Item = T>,
+    predicate: impl Fn(&T) -> bool,
+) -> Option<T> {
     let mut found = iter.next();
 
     for item in iter {

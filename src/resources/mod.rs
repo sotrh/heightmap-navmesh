@@ -2,6 +2,7 @@ pub mod camera;
 pub mod bindings;
 pub mod model;
 pub mod texture;
+pub mod buffer;
 
 pub async fn save_text(path: &str, contents: &str) -> anyhow::Result<()> {
     Ok(async_fs::write(path, contents).await?)
